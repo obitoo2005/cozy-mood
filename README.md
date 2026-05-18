@@ -2,15 +2,6 @@
 
 A pastel cute monthly mood + habit + self-care tracker. Mobile-friendly, works offline, syncs across devices, installable as a phone app.
 
-## Run locally
-
-Open `index.html` in any modern browser, or serve the folder:
-
-```bash
-python -m http.server 5500
-# open http://localhost:5500
-```
-
 ## Features
 
 - 📅 Monthly calendar with mood per day, click any cell to edit
