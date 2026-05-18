@@ -158,24 +158,41 @@ jobs:
 
           ls -la
 
-      - name: Build APK
+      - name: Build APK with Gradle (bypasses interactive prompts)
         working-directory: twa
         run: |
           cp ../android.keystore ./android.keystore
           KEYSTORE_PASS="${{ secrets.ANDROID_KEYSTORE_PASSWORD || 'cozypass' }}"
           KEY_PASS="${{ secrets.ANDROID_KEY_PASSWORD || 'cozypass' }}"
           KEY_ALIAS="${{ secrets.ANDROID_KEY_ALIAS || 'cozy' }}"
-          # Feed passwords to bubblewrap on stdin (it prompts twice: keystore pass, then key pass)
-          printf '%s\n%s\n' "$KEYSTORE_PASS" "$KEY_PASS" | bubblewrap build \
-            --skipPwaValidation \
-            --signingKeyPath=./android.keystore \
-            --signingKeyAlias="$KEY_ALIAS"
+
+          chmod +x ./gradlew
+
+          # Build the release APK directly via Gradle, passing signing config
+          # as injected properties so no interactive prompt is needed.
+          ./gradlew assembleRelease --no-daemon --stacktrace \
+            -Pandroid.injected.signing.store.file="$(pwd)/android.keystore" \
+            -Pandroid.injected.signing.store.password="$KEYSTORE_PASS" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASS"
+
+          echo "Build complete. APK locations:"
+          find . -name "*.apk" -type f
 
       - name: Find built APK
         id: apk
         working-directory: twa
         run: |
-          APK_PATH=$(find . \( -name "app-release-signed.apk" -o -name "app-release.apk" \) | head -n 1)
+          # Gradle output is typically under app/build/outputs/apk/release/
+          APK_PATH=$(find . -path '*/outputs/apk/release/*.apk' -type f | head -n 1)
+          if [ -z "$APK_PATH" ]; then
+            APK_PATH=$(find . -name "app-release-signed.apk" -o -name "app-release.apk" -type f | head -n 1)
+          fi
+          if [ -z "$APK_PATH" ]; then
+            echo "::error::No APK was produced by the build."
+            find . -name "*.apk" -type f
+            exit 1
+          fi
           echo "Found: $APK_PATH"
           cp "$APK_PATH" ../cozy-mood.apk
           echo "path=cozy-mood.apk" >> $GITHUB_OUTPUT
