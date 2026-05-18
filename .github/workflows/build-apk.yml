@@ -11,6 +11,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && 'true' || 'false' }}
     steps:
@@ -58,11 +59,27 @@ jobs:
             -storepass cozypass -keypass cozypass \
             -dname "CN=Cozy Mood, OU=App, O=Cozy, L=Earth, S=Earth, C=US"
 
-      - name: Init Bubblewrap project
+      - name: Verify PWA manifest is live
+        run: |
+          MANIFEST_URL="${{ steps.pwa.outputs.url }}manifest.webmanifest"
+          echo "Checking $MANIFEST_URL"
+          for i in 1 2 3 4 5 6; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$MANIFEST_URL" || echo "000")
+            echo "  attempt $i → $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "manifest is live ✓"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::manifest not reachable at $MANIFEST_URL — make sure GitHub Pages has deployed"
+          exit 1
+
+      - name: Init Bubblewrap project (non-interactive)
         run: |
           mkdir twa && cd twa
-          # Pre-create the bubblewrap config so it doesn't ask about JDK/SDK install.
-          # JDK 17 is provided by the setup-java step, Android SDK comes with the GitHub runner.
+
+          # Pre-create bubblewrap config so it doesn't ask about JDK/SDK install
           mkdir -p ~/.bubblewrap
           cat > ~/.bubblewrap/config.json <<JSON
           {
@@ -70,19 +87,62 @@ jobs:
             "androidSdkPath": "$ANDROID_HOME"
           }
           JSON
-          # Pipe "No" answers to any remaining interactive prompt
-          yes "No" | bubblewrap init \
-            --manifest "${{ steps.pwa.outputs.url }}manifest.webmanifest" \
-            --directory . \
-            --skipPwaValidation || true
-          # Sanity check
-          if [ ! -f twa-manifest.json ]; then
-            echo "::error::twa-manifest.json was not created"
-            ls -la
-            exit 1
-          fi
-        env:
-          BUBBLEWRAP_GA_TRACKING_ID: ''
+
+          REPO_NAME="${GITHUB_REPOSITORY##*/}"
+          OWNER_LOWER=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          PWA_HOST="${OWNER_LOWER}.github.io"
+          PWA_PATH="/${REPO_NAME}/"
+          # Sanitise repo name into a valid Java package segment (lowercase, alnum)
+          PKG_SEG=$(echo "$REPO_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9')
+          if [ -z "$PKG_SEG" ]; then PKG_SEG="cozymood"; fi
+          APP_PACKAGE="io.github.${OWNER_LOWER}.${PKG_SEG}"
+
+          # Pre-write twa-manifest.json with all answers, so init doesn't prompt
+          cat > twa-manifest.json <<JSON
+          {
+            "packageId": "${APP_PACKAGE}",
+            "host": "${PWA_HOST}",
+            "name": "Cozy Mood Tracker",
+            "launcherName": "Cozy Mood",
+            "display": "standalone",
+            "themeColor": "#ffd6e0",
+            "navigationColor": "#ffd6e0",
+            "navigationColorDark": "#1f1a23",
+            "navigationDividerColor": "#ffd6e0",
+            "navigationDividerColorDark": "#1f1a23",
+            "backgroundColor": "#fff5f7",
+            "enableNotifications": true,
+            "startUrl": "${PWA_PATH}index.html",
+            "iconUrl": "https://${PWA_HOST}${PWA_PATH}assets/icons/icon-512.png",
+            "maskableIconUrl": "https://${PWA_HOST}${PWA_PATH}assets/icons/icon-512-maskable.png",
+            "appVersionName": "1.0.0",
+            "appVersionCode": 1,
+            "shortcuts": [],
+            "signingKey": {
+              "path": "./android.keystore",
+              "alias": "cozy"
+            },
+            "generatorApp": "bubblewrap-cli",
+            "webManifestUrl": "https://${PWA_HOST}${PWA_PATH}manifest.webmanifest",
+            "fallbackType": "customtabs",
+            "features": {},
+            "alphaDependencies": { "enabled": false },
+            "enableSiteSettingsShortcut": true,
+            "isChromeOSOnly": false,
+            "isMetaQuest": false,
+            "fullScopeUrl": "https://${PWA_HOST}${PWA_PATH}",
+            "minSdkVersion": 21,
+            "orientation": "default"
+          }
+          JSON
+
+          echo "twa-manifest.json:"
+          cat twa-manifest.json
+
+          # Update generates the Android project files from the manifest (non-interactive)
+          bubblewrap update --skipVersionUpgrade
+
+          ls -la
 
       - name: Build APK
         working-directory: twa
@@ -120,12 +180,17 @@ jobs:
         run: |
           PACKAGE=""
           if [ -f twa/twa-manifest.json ]; then
-            PACKAGE=$(grep -m1 '"applicationId"' twa/twa-manifest.json | cut -d '"' -f 4 || echo "")
+            # twa-manifest.json uses "packageId"
+            PACKAGE=$(grep -m1 '"packageId"' twa/twa-manifest.json | cut -d '"' -f 4 || echo "")
           fi
           if [ -z "$PACKAGE" ]; then
-            PACKAGE="com.${GITHUB_REPOSITORY_OWNER,,}.cozymood"
+            OWNER_LOWER=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+            REPO_NAME="${GITHUB_REPOSITORY##*/}"
+            PKG_SEG=$(echo "$REPO_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9')
+            [ -z "$PKG_SEG" ] && PKG_SEG="cozymood"
+            PACKAGE="io.github.${OWNER_LOWER}.${PKG_SEG}"
           fi
-          # Save the new content to a temp file (workspace gets reset on git checkout below)
+          echo "Package: $PACKAGE"
           cat > /tmp/assetlinks.json <<JSON
           [{
             "relation": ["delegate_permission/common.handle_all_urls"],
@@ -140,16 +205,18 @@ jobs:
           cat /tmp/assetlinks.json
 
       - name: Commit assetlinks.json back to main
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Stash the APK so it survives the checkout
+          cp cozy-mood.apk /tmp/cozy-mood.apk
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin main
           git checkout main
           mkdir -p .well-known
           cp /tmp/assetlinks.json .well-known/assetlinks.json
-          # Only commit + push if it actually changed vs what's in main
           if ! git diff --quiet -- .well-known/assetlinks.json; then
             git add .well-known/assetlinks.json
             git commit -m "chore: update assetlinks.json [skip ci]"
@@ -157,6 +224,8 @@ jobs:
           else
             echo "assetlinks.json unchanged, skipping commit."
           fi
+          # Restore the APK to the workspace root for the upload + release steps
+          cp /tmp/cozy-mood.apk cozy-mood.apk
 
       - name: Upload APK as workflow artifact
         uses: actions/upload-artifact@v4
