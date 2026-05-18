@@ -1,1 +1,8 @@
-[]
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "io.github.obitoo2005.cozymood",
+    "sha256_cert_fingerprints": ["B8:3E:3A:26:B2:38:BB:B7:30:76:84:4D:BC:E3:B1:95:8E:40:2E:60:22:2E:DA:A3:2D:30:48:53:B5:2C:4B:90"]
+  }
+}]
