@@ -773,7 +773,7 @@ input[type="number"] { width: 120px; text-align: center; }
 
   .app-header { padding: 8px 12px; }
   .brand-mascot { width: 38px; height: 38px; }
-  .brand-title { font-size: 20px; }
+  .brand-title { display: none; }
   .brand-sub { display: none; }
   .icon-btn { width: 34px; height: 34px; padding: 3px; }
   .header-controls { gap: 4px; }
@@ -873,7 +873,6 @@ input[type="number"] { width: 120px; text-align: center; }
 @media (max-width: 380px) {
   .app-header { padding: 6px 10px; gap: 4px; }
   .brand { gap: 6px; }
-  .brand-title { font-size: 18px; }
   .brand-mascot { width: 32px; height: 32px; }
   .icon-btn { width: 30px; height: 30px; padding: 2px; }
   .header-controls { gap: 3px; }
@@ -887,9 +886,9 @@ input[type="number"] { width: 120px; text-align: center; }
   .tab-btn { min-width: 52px; padding: 5px 6px; }
 }
 
-/* Ultra narrow: 340px and below — drop brand title to keep header tidy */
+/* Ultra narrow: 340px and below — already cleaned, just keep mascot tight */
 @media (max-width: 340px) {
-  .brand-title { display: none; }
+  .brand-mascot { width: 30px; height: 30px; }
 }
 
 /* Desktop: roomy modals + wider charts */
