@@ -29,7 +29,3 @@ python -m http.server 5500
 - 📱 Install as a phone app (PWA) or download the APK
 
 
-
-## Storage
-
-Data lives in your browser's `localStorage` (private, on-device). For multi-device, sign in to cloud sync. Always have a JSON backup via Settings → Export.
