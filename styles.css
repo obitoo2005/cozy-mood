@@ -778,11 +778,9 @@ input[type="number"] { width: 120px; text-align: center; }
   .icon-btn { width: 34px; height: 34px; padding: 3px; }
   .header-controls { gap: 4px; }
 
-  /* tab-bar gets a subtle right-edge fade to hint horizontal scroll */
+  /* tab-bar — clean horizontal scroll on phone */
   .tab-bar {
     padding: 8px 12px;
-    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 28px), transparent);
-            mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 28px), transparent);
   }
 
   .app-main { padding: 10px; }
