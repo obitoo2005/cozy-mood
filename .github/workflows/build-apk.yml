@@ -1,0 +1,165 @@
+name: Build Android APK
+
+on:
+  push:
+    tags: ['v*']        # build APK whenever you push a version tag, e.g. v1.0.0
+  workflow_dispatch:    # or manually from the Actions tab
+
+permissions:
+  contents: write       # needed to create a Release with the APK attached
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && 'true' || 'false' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Bubblewrap
+        run: npm install -g @bubblewrap/cli
+
+      - name: Determine PWA URL
+        id: pwa
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY##*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          OWNER_LOWER=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
+          echo "url=https://$OWNER_LOWER.github.io/$REPO_NAME/" >> $GITHUB_OUTPUT
+          echo "host=$OWNER_LOWER.github.io" >> $GITHUB_OUTPUT
+
+      # Use a stable keystore stored as a GitHub Secret if provided.
+      # If not, generate one (NOTE: regenerated keystores produce a new
+      # fingerprint, so prefer providing your own once you've cut your
+      # first release — see README "stable keystore" section).
+      - name: Decode keystore from secret
+        if: env.HAS_KEYSTORE == 'true'
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android.keystore
+
+      - name: Generate keystore (fallback)
+        if: env.HAS_KEYSTORE == 'false'
+        run: |
+          keytool -genkey -v \
+            -keystore android.keystore \
+            -alias cozy \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass cozypass -keypass cozypass \
+            -dname "CN=Cozy Mood, OU=App, O=Cozy, L=Earth, S=Earth, C=US"
+
+      - name: Init Bubblewrap project
+        run: |
+          mkdir twa && cd twa
+          bubblewrap init \
+            --manifest "${{ steps.pwa.outputs.url }}manifest.webmanifest" \
+            --directory . \
+            --skipPwaValidation
+        env:
+          BUBBLEWRAP_GA_TRACKING_ID: ''
+
+      - name: Build APK
+        working-directory: twa
+        run: |
+          cp ../android.keystore ./android.keystore
+          KEYSTORE_PASS="${{ secrets.ANDROID_KEYSTORE_PASSWORD || 'cozypass' }}"
+          KEY_PASS="${{ secrets.ANDROID_KEY_PASSWORD || 'cozypass' }}"
+          KEY_ALIAS="${{ secrets.ANDROID_KEY_ALIAS || 'cozy' }}"
+          bubblewrap build \
+            --skipPwaValidation \
+            --signingKeyPath=./android.keystore \
+            --signingKeyAlias="$KEY_ALIAS"
+        env:
+          # bubblewrap reads these from env when present
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || 'cozypass' }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD || 'cozypass' }}
+
+      - name: Find built APK
+        id: apk
+        working-directory: twa
+        run: |
+          APK_PATH=$(find . \( -name "app-release-signed.apk" -o -name "app-release.apk" \) | head -n 1)
+          echo "Found: $APK_PATH"
+          cp "$APK_PATH" ../cozy-mood.apk
+          echo "path=cozy-mood.apk" >> $GITHUB_OUTPUT
+
+      - name: Extract SHA-256 fingerprint
+        id: fp
+        run: |
+          # Pull the cert out of the APK and grab the SHA-256
+          unzip -o cozy-mood.apk -d apk_extracted META-INF/* > /dev/null
+          CERT=$(ls apk_extracted/META-INF/*.RSA apk_extracted/META-INF/*.DSA apk_extracted/META-INF/*.EC 2>/dev/null | head -n 1)
+          SHA256=$(keytool -printcert -file "$CERT" | grep -i "SHA256:" | awk -F': ' '{print $2}' | tr -d ' ')
+          echo "Fingerprint: $SHA256"
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+
+      - name: Generate .well-known/assetlinks.json
+        run: |
+          PACKAGE=""
+          if [ -f twa/twa-manifest.json ]; then
+            PACKAGE=$(grep -m1 '"applicationId"' twa/twa-manifest.json | cut -d '"' -f 4 || echo "")
+          fi
+          if [ -z "$PACKAGE" ]; then
+            PACKAGE="com.${GITHUB_REPOSITORY_OWNER,,}.cozymood"
+          fi
+          # Save the new content to a temp file (workspace gets reset on git checkout below)
+          cat > /tmp/assetlinks.json <<JSON
+          [{
+            "relation": ["delegate_permission/common.handle_all_urls"],
+            "target": {
+              "namespace": "android_app",
+              "package_name": "$PACKAGE",
+              "sha256_cert_fingerprints": ["${{ steps.fp.outputs.sha256 }}"]
+            }
+          }]
+          JSON
+          echo "Generated assetlinks.json:"
+          cat /tmp/assetlinks.json
+
+      - name: Commit assetlinks.json back to main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout main
+          mkdir -p .well-known
+          cp /tmp/assetlinks.json .well-known/assetlinks.json
+          # Only commit + push if it actually changed vs what's in main
+          if ! git diff --quiet -- .well-known/assetlinks.json; then
+            git add .well-known/assetlinks.json
+            git commit -m "chore: update assetlinks.json [skip ci]"
+            git push origin main
+          else
+            echo "assetlinks.json unchanged, skipping commit."
+          fi
+
+      - name: Upload APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cozy-mood-apk
+          path: cozy-mood.apk
+
+      - name: Create / update GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: cozy-mood.apk
+          generate_release_notes: true
+          body: |
+            🌷 **Cozy Mood Tracker** Android APK
+
+            Install on Android: download `cozy-mood.apk` below → tap to install (you may need to allow "install from unknown sources").
+
+            Or use the web app at: ${{ steps.pwa.outputs.url }}

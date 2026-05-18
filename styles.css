@@ -1,0 +1,912 @@
+/* ─────────────────────────────────────────────
+   Cozy Mood Tracker · pastel cute UI
+   ───────────────────────────────────────────── */
+
+:root,
+[data-theme="pink"] {
+  --bg: #fff5f7;
+  --bg-2: #ffe8ee;
+  --card: #ffffff;
+  --primary: #f7a8b8;
+  --primary-soft: #ffd6e0;
+  --accent: #b6e3e9;
+  --accent-2: #fbe7c6;
+  --good: #b8e0a4;
+  --bad: #f4a6a6;
+  --text: #4a3b3f;
+  --text-soft: #8a7b7f;
+  --line: #f3dde3;
+  --shadow: 0 6px 24px rgba(247, 168, 184, .25);
+  --radius: 18px;
+  --radius-sm: 12px;
+  /* sticky element heights — keep these in sync with .app-header / .search-bar */
+  --header-h: 72px;
+  --search-h: 56px;
+}
+
+[data-theme="blue"] {
+  --bg: #f1f8ff; --bg-2: #dcecff; --primary: #8ec5ff;
+  --primary-soft: #cfe4ff; --accent: #ffd0e3; --accent-2: #d8f3dc;
+  --line: #d8e6f5; --shadow: 0 6px 24px rgba(142,197,255,.25);
+}
+
+[data-theme="green"] {
+  --bg: #f3faf3; --bg-2: #e2f3e0; --primary: #9ed29a;
+  --primary-soft: #d4ecd0; --accent: #fbd6d6; --accent-2: #fff3c2;
+  --line: #d8ead4; --shadow: 0 6px 24px rgba(158,210,154,.25);
+}
+
+[data-theme="purple"] {
+  --bg: #f8f4ff; --bg-2: #ece2ff; --primary: #c2a3ec;
+  --primary-soft: #ddccf7; --accent: #ffd9ec; --accent-2: #c8edff;
+  --line: #e2d6f3; --shadow: 0 6px 24px rgba(194,163,236,.25);
+}
+
+[data-theme="peach"] {
+  --bg: #fff5ee; --bg-2: #ffe1cf; --primary: #ffb088;
+  --primary-soft: #ffd2b9; --accent: #c8eadb; --accent-2: #fde9a8;
+  --line: #f4d8c5; --shadow: 0 6px 24px rgba(255,176,136,.25);
+}
+
+[data-dark="true"] {
+  --bg: #1f1a23;
+  --bg-2: #2a2230;
+  --card: #2c2532;
+  --text: #f2e6ec;
+  --text-soft: #c4b3bd;
+  --line: #3a2f40;
+  --shadow: 0 6px 18px rgba(0,0,0,.4);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Quicksand', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  background-attachment: fixed;
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 15px;
+  padding-bottom: 72px;
+  /* iOS / Android edge-to-edge safe areas */
+  padding-top: env(safe-area-inset-top, 0);
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
+}
+
+/* ───── header ───── */
+.app-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px;
+  position: sticky; top: 0; z-index: 50;
+  background: var(--bg);
+  border-bottom: 1px dashed var(--line);
+  gap: 8px;
+  min-height: var(--header-h);
+}
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; flex-shrink: 1; }
+.brand > div { min-width: 0; }
+.brand-mascot {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--primary-soft);
+  display: grid; place-items: center; font-size: 22px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.brand-mascot img {
+  width: 110%; height: 110%;
+  object-fit: cover;
+  object-position: center top;
+  pointer-events: none;
+}
+.brand-title {
+  margin: 0; font-family: 'Caveat', cursive;
+  font-size: 28px; line-height: 1; color: var(--primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.brand-sub {
+  margin: 0; font-size: 12px; color: var(--text-soft);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.header-controls { display: flex; gap: 6px; flex-shrink: 0; }
+.icon-btn {
+  background: var(--card); border: 1px solid var(--line);
+  width: 38px; height: 38px; border-radius: 12px;
+  font-size: 16px; cursor: pointer; color: var(--text);
+  transition: transform .15s ease, background .15s ease;
+  display: grid; place-items: center; padding: 4px;
+  position: relative;
+}
+.icon-btn:hover { transform: translateY(-1px); background: var(--primary-soft); }
+.icon-btn img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.05));
+}
+/* tiny "on" dot for active reminder */
+.icon-btn.on::after {
+  content: '';
+  position: absolute;
+  top: 4px; right: 4px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid var(--card);
+  box-shadow: 0 0 4px var(--primary);
+}
+
+/* ───── search ───── */
+.search-bar {
+  position: sticky; top: var(--header-h); z-index: 40;
+  padding: 8px 14px; background: var(--bg);
+  border-bottom: 1px dashed var(--line);
+}
+.search-bar input {
+  width: 100%; padding: 10px 14px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--card);
+  color: var(--text); font-size: 14px;
+}
+.search-results {
+  margin-top: 8px; max-height: 240px; overflow-y: auto;
+}
+.search-results .result {
+  padding: 8px 12px; border-radius: 10px;
+  background: var(--card); margin-bottom: 6px;
+  cursor: pointer; border: 1px solid var(--line);
+}
+.search-results .result:hover { background: var(--primary-soft); }
+.search-results .result small { color: var(--text-soft); display: block; }
+
+/* ───── tab nav ───── */
+.tab-bar {
+  display: flex; gap: 4px; padding: 10px 14px 10px 14px; overflow-x: auto;
+  position: sticky; top: var(--header-h); z-index: 30;
+  background: var(--bg); border-bottom: 1px dashed var(--line);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scroll-padding: 0 14px;
+  scroll-behavior: smooth;
+}
+.tab-bar::after {
+  /* phantom right pad so last tab isn't flush to edge after scroll */
+  content: '';
+  flex: 0 0 4px;
+}
+.tab-bar.with-search { top: calc(var(--header-h) + var(--search-h)); }
+.tab-btn {
+  flex: 0 0 auto; display: flex; flex-direction: column; align-items: center;
+  gap: 2px; min-width: 70px; padding: 8px 12px;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 14px; cursor: pointer; color: var(--text);
+  transition: all .15s ease;
+}
+.tab-btn span { font-size: 18px; }
+.tab-btn .tab-ic {
+  width: 24px; height: 24px;
+  display: grid; place-items: center;
+}
+.tab-btn .tab-ic img {
+  width: 100%; height: 100%; object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.05));
+}
+.tab-btn.active .tab-ic img {
+  filter: brightness(0) invert(1) drop-shadow(0 1px 1px rgba(0,0,0,.15));
+}
+.tab-btn label { font-size: 11px; font-weight: 600; pointer-events: none; }
+.tab-btn:hover { transform: translateY(-1px); }
+.tab-btn.active {
+  background: var(--primary); color: #fff; border-color: var(--primary);
+  box-shadow: var(--shadow);
+}
+
+/* ───── main + panels ───── */
+.app-main { padding: 14px; max-width: 1200px; margin: 0 auto; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; animation: fadeIn .25s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ───── card ───── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--line);
+  margin-bottom: 14px;
+  position: relative;
+}
+
+/* decorative corner stickers around the calendar card */
+.calendar-card { overflow: visible; }
+.calendar-card .deco {
+  position: absolute;
+  width: 60px; height: 60px;
+  pointer-events: none;
+  user-select: none;
+  z-index: 2;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.08));
+  animation: float 6s ease-in-out infinite;
+}
+.calendar-card .deco-tl { top: -24px; left: -20px; rotate: -12deg; animation-delay: 0s; }
+.calendar-card .deco-tr { top: -26px; right: -18px; rotate: 14deg;  animation-delay: 1.2s; }
+.calendar-card .deco-bl { bottom: -22px; left: -18px; rotate: 10deg; animation-delay: 2.4s; }
+.calendar-card .deco-br { bottom: -24px; right: -20px; rotate: -10deg; animation-delay: 3.6s; }
+@keyframes float {
+  0%,100% { translate: 0 0; }
+  50%     { translate: 0 -6px; }
+}
+.card-label {
+  font-family: 'Caveat', cursive; font-size: 22px; color: var(--primary);
+  margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+}
+.hint { font-size: 12px; color: var(--text-soft); }
+
+/* ───── buttons ───── */
+.mini-btn {
+  background: var(--primary-soft); color: var(--text);
+  border: 1px solid var(--line); padding: 8px 14px;
+  border-radius: 999px; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .15s ease;
+}
+.mini-btn:hover { background: var(--primary); color: #fff; transform: translateY(-1px); }
+.mini-btn.danger { background: #ffd6d6; }
+.mini-btn.danger:hover { background: #ef6f6f; color: #fff; }
+.round-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--primary-soft); border: 1px solid var(--line);
+  font-size: 18px; cursor: pointer; color: var(--text);
+}
+.round-btn:hover { background: var(--primary); color: #fff; }
+
+/* ───── month picker ───── */
+.month-picker {
+  display: flex; align-items: center; justify-content: center;
+  gap: 16px; margin-bottom: 14px;
+}
+.month-title {
+  display: flex; align-items: center; gap: 12px; position: relative;
+}
+.month-num {
+  font-family: 'Caveat', cursive; font-size: 56px; line-height: 1;
+  color: var(--text);
+}
+.month-meta { display: flex; flex-direction: column; }
+.month-year { color: var(--text-soft); font-size: 13px; letter-spacing: 1px; }
+.month-name {
+  font-weight: 700; letter-spacing: 2px;
+  color: var(--text); font-size: 15px;
+}
+.month-jump {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer;
+}
+
+/* ───── today's mood ───── */
+.today-mood { background: linear-gradient(120deg, var(--primary-soft), var(--accent)); }
+.mood-picker {
+  display: flex; gap: 8px 6px; flex-wrap: wrap; margin-top: 4px;
+  padding-bottom: 4px;
+  row-gap: 22px;
+}
+.mood-pick {
+  background: var(--card); border: 2px solid var(--line);
+  width: 56px; height: 56px; border-radius: 14px;
+  display: grid; place-items: center; font-size: 22px;
+  cursor: pointer; transition: transform .15s ease, border-color .15s ease;
+  position: relative;
+  padding: 4px;
+  flex: 0 0 auto;
+}
+.mood-pick .mp-icon {
+  display: grid; place-items: center;
+  width: 100%; height: 100%;
+}
+.mood-pick .mp-icon img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.06));
+}
+.mood-pick:hover { transform: translateY(-2px) rotate(-3deg); }
+.mood-pick.selected {
+  border-color: var(--primary); background: var(--primary-soft);
+  transform: scale(1.08);
+}
+.mood-pick .lbl {
+  position: absolute; bottom: -16px; left: 50%; transform: translateX(-50%);
+  font-size: 10px; color: var(--text-soft);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.custom-sticker-row {
+  margin-top: 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+}
+.custom-sticker-row input {
+  width: 60px; padding: 8px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--card);
+  text-align: center; font-size: 18px;
+  flex: 0 0 auto;
+}
+.custom-sticker-row .hint { flex: 1 1 100%; }
+
+/* ───── calendar layout ───── */
+.calendar-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 14px;
+}
+@media (max-width: 880px) {
+  .calendar-layout { grid-template-columns: 1fr; }
+}
+
+/* habit card */
+.habit-list { display: flex; flex-direction: column; gap: 10px; }
+.habit-row {
+  background: var(--bg-2); border-radius: 12px; padding: 8px 10px;
+  border: 1px solid var(--line);
+}
+.habit-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-bottom: 6px;
+}
+.habit-name {
+  display: flex; align-items: center; gap: 6px;
+  font-weight: 700; color: var(--text);
+}
+.habit-streak { font-size: 11px; color: var(--primary); font-weight: 700; }
+.habit-row .hr-actions { display: flex; gap: 4px; }
+.habit-row .hr-actions button {
+  background: none; border: none; cursor: pointer;
+  font-size: 12px; color: var(--text-soft);
+}
+.habit-dots {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
+}
+.habit-dot {
+  aspect-ratio: 1; border-radius: 50%; background: var(--line);
+  border: 1px solid var(--line); cursor: pointer;
+  display: grid; place-items: center; font-size: 10px;
+  color: var(--text-soft); transition: transform .12s ease;
+}
+.habit-dot:hover { transform: scale(1.15); }
+.habit-dot.done { background: var(--good); color: #fff; }
+.habit-dot.skip { background: var(--bad); color: #fff; }
+.habit-dot.future { opacity: .35; cursor: default; }
+
+/* notes */
+.note-card textarea, .journal-card textarea {
+  width: 100%; min-height: 90px; resize: vertical;
+  padding: 10px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--bg-2);
+  font-family: inherit; color: var(--text); font-size: 14px;
+}
+.journal-card textarea { min-height: 240px; }
+
+/* mood of month */
+.mood-of-month-card {
+  position: relative;
+  overflow: visible;
+}
+.mom-mascot {
+  position: absolute;
+  width: 64px; height: 64px;
+  bottom: -10px;
+  right: -8px;
+  rotate: 8deg;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.08));
+  animation: peek 5s ease-in-out infinite;
+  z-index: 2;
+}
+@keyframes peek {
+  0%,100% { translate: 0 0; }
+  50%     { translate: 0 -4px; }
+}
+.mood-of-month {
+  width: 90px; height: 90px; border-radius: 50%;
+  margin: 8px auto; background: var(--primary-soft);
+  display: grid; place-items: center; font-size: 38px;
+  border: 3px dashed var(--primary);
+  overflow: hidden;
+  padding: 6px;
+}
+.mood-of-month img.mood-img {
+  width: 100%; height: 100%; object-fit: contain;
+}
+.mood-of-month-text { text-align: center; font-family: 'Caveat', cursive; font-size: 22px; color: var(--text); }
+
+/* calendar grid */
+.weekday-row {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  text-align: center; font-size: 11px; font-weight: 700;
+  color: var(--text-soft); text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.calendar-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+}
+.cell {
+  background: var(--bg-2); border-radius: 12px;
+  border: 1px solid var(--line);
+  aspect-ratio: 1 / 1.05;
+  position: relative; cursor: pointer;
+  display: flex; flex-direction: column;
+  padding: 4px 6px;
+  transition: transform .12s ease, box-shadow .12s ease;
+  overflow: hidden;
+}
+.cell:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.cell.empty { background: transparent; border-color: transparent; cursor: default; }
+.cell.empty:hover { transform: none; box-shadow: none; }
+.cell.today {
+  border: 2px solid var(--primary);
+  background: var(--primary-soft);
+}
+.cell.future { opacity: .55; }
+.cell .day-num { font-size: 11px; font-weight: 700; color: var(--text-soft); }
+.cell .mood {
+  font-size: 30px; flex: 1; display: grid; place-items: center;
+  text-align: center; line-height: 1;
+}
+.cell .mood img.mood-img {
+  width: 100%; height: 100%; max-height: 90%;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.06));
+  pointer-events: none;
+}
+.cell .indicator-row {
+  position: absolute; bottom: 4px; right: 4px;
+  display: flex; gap: 2px;
+}
+.cell .indicator { width: 5px; height: 5px; border-radius: 50%; background: var(--good); }
+.cell .indicator.bad { background: var(--bad); }
+.cell .has-note { position: absolute; top: 4px; right: 4px; font-size: 9px; }
+
+/* weekly summary */
+.weekly-summary {
+  margin-top: 12px; display: flex; gap: 6px; flex-wrap: wrap;
+}
+.week-pill {
+  background: var(--bg-2); border-radius: 999px; padding: 4px 10px;
+  font-size: 12px; border: 1px dashed var(--line);
+}
+.week-pill .we { font-size: 14px; }
+
+/* ───── health ───── */
+.health-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+.stat-card { text-align: center; }
+.counter {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+}
+.circle-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--primary-soft);
+  font-size: 18px; cursor: pointer; color: var(--text);
+}
+.circle-btn:hover { background: var(--primary); color: #fff; }
+.counter-display { font-size: 30px; font-weight: 700; }
+.counter-display small { font-size: 12px; color: var(--text-soft); margin-left: 4px; font-weight: 500; }
+.cup-row {
+  display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; margin-top: 8px;
+}
+.cup {
+  font-size: 22px; opacity: .35; cursor: pointer; transition: all .12s ease;
+}
+.cup.full { opacity: 1; transform: translateY(-2px); }
+.big-num {
+  font-size: 32px; font-weight: 700;
+}
+.big-num small { font-size: 12px; color: var(--text-soft); margin-left: 4px; font-weight: 500; }
+.progress-bar {
+  width: 100%; height: 8px; background: var(--bg-2);
+  border-radius: 999px; margin-top: 6px; overflow: hidden;
+}
+.progress-bar div {
+  height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent));
+  border-radius: 999px; transition: width .3s ease;
+}
+input[type="range"] {
+  width: 100%; accent-color: var(--primary);
+}
+input[type="number"], input[type="date"], input[type="time"], input[type="month"] {
+  padding: 8px 10px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--bg-2);
+  color: var(--text); font-family: inherit; font-size: 14px;
+}
+input[type="number"] { width: 120px; text-align: center; }
+.health-date-bar, .todo-date-bar {
+  display: flex; gap: 8px; align-items: center; justify-content: center;
+  margin-bottom: 12px;
+}
+.meals-row {
+  display: flex; justify-content: center; gap: 10px; margin-top: 4px;
+}
+.meal {
+  background: var(--bg-2); border: 2px solid var(--line);
+  border-radius: 14px; padding: 10px 6px; cursor: pointer;
+  width: 70px; transition: all .15s ease;
+}
+.meal .ic { font-size: 24px; }
+.meal .nm { font-size: 11px; color: var(--text-soft); display: block; margin-top: 2px; }
+.meal.eaten { background: var(--good); color: #fff; border-color: var(--good); }
+.meal.eaten .nm { color: #fff; }
+.stars-row { font-size: 26px; cursor: pointer; user-select: none; }
+.stars-row .star { opacity: .3; transition: opacity .12s ease; }
+.stars-row .star.on { opacity: 1; }
+
+/* ───── todo ───── */
+.todo-grid {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+.add-todo { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.add-todo input {
+  flex: 1; min-width: 120px;
+  padding: 8px 10px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--bg-2); color: var(--text);
+  font-family: inherit; font-size: 14px;
+}
+.todo-list { list-style: none; padding: 0; margin: 0; }
+.todo-list li {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: 12px;
+  background: var(--bg-2); margin-bottom: 6px;
+  border: 1px solid var(--line);
+}
+.todo-list li.done .text { text-decoration: line-through; color: var(--text-soft); }
+.todo-list .text { flex: 1; }
+.todo-list .meta { font-size: 11px; color: var(--text-soft); }
+.todo-list .del {
+  background: none; border: none; font-size: 14px; cursor: pointer; color: var(--text-soft);
+}
+.todo-list .del:hover { color: var(--bad); }
+.todo-list input[type="checkbox"] { accent-color: var(--primary); width: 18px; height: 18px; }
+.todo-foot { font-size: 12px; color: var(--text-soft); margin-top: 6px; }
+
+/* ───── stats ───── */
+.insight-grid {
+  display: grid; gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  margin-bottom: 8px;
+}
+.insight {
+  background: var(--bg-2); border-radius: 14px; padding: 10px;
+  text-align: center; border: 1px dashed var(--line);
+}
+.insight .ic { font-size: 24px; }
+.insight .lbl { font-size: 11px; color: var(--text-soft); }
+.insight .val { font-size: 16px; font-weight: 700; color: var(--text); }
+.ai-summary {
+  margin-top: 8px;
+  padding: 12px; background: linear-gradient(120deg, var(--primary-soft), var(--accent));
+  border-radius: 14px; font-family: 'Caveat', cursive; font-size: 20px;
+  line-height: 1.3; color: var(--text);
+}
+.chart-card canvas { max-height: 260px; }
+.streak-list {
+  display: grid; gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.streak-item {
+  background: var(--bg-2); border-radius: 12px; padding: 8px 12px;
+  border: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.streak-item .num { font-size: 22px; font-weight: 700; color: var(--primary); }
+.streak-item .num small { font-size: 11px; color: var(--text-soft); margin-left: 2px; }
+
+#weeksRecap { display: grid; gap: 8px; }
+.week-row {
+  background: var(--bg-2); border-radius: 12px; padding: 10px 12px;
+  border: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  flex-wrap: wrap;
+}
+.week-row .wmoods { font-size: 18px; }
+
+/* archive */
+.archive-list {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.archive-item {
+  background: var(--bg-2); border-radius: 14px; padding: 12px;
+  border: 1px dashed var(--line); cursor: pointer;
+  text-align: center; transition: transform .12s ease;
+}
+.archive-item:hover { transform: translateY(-2px); }
+.archive-item .am { font-size: 30px; }
+.archive-item .ay { color: var(--text-soft); font-size: 12px; }
+.archive-item .a-mood { font-size: 22px; min-height: 40px; display: grid; place-items: center; }
+.archive-item .a-mood img.mood-img { width: 44px; height: 44px; object-fit: contain; }
+.week-pill .we img.mood-img { width: 22px; height: 22px; vertical-align: middle; object-fit: contain; }
+.wmoods img.mood-img { width: 28px; height: 28px; object-fit: contain; vertical-align: middle; margin: 0 1px; }
+.search-results img.mood-img { width: 22px; height: 22px; vertical-align: middle; object-fit: contain; }
+.ai-summary img.mood-img { width: 22px; height: 22px; vertical-align: middle; object-fit: contain; }
+
+/* settings */
+.theme-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.swatch {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 2px solid var(--line); cursor: pointer;
+}
+.swatch.active { border-color: var(--text); transform: scale(1.1); }
+.setting-toggle {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 0; font-size: 14px;
+}
+.setting-toggle input[type="checkbox"] { accent-color: var(--primary); width: 18px; height: 18px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.custom-sticker-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.custom-sticker-list .cs {
+  background: var(--bg-2); border-radius: 10px; padding: 4px 10px;
+  font-size: 18px; border: 1px solid var(--line);
+  display: flex; align-items: center; gap: 6px;
+}
+.custom-sticker-list .cs button {
+  background: none; border: none; cursor: pointer; color: var(--text-soft); font-size: 12px;
+}
+.about-card p { color: var(--text-soft); line-height: 1.5; }
+
+/* ───── cloud sync card ───── */
+#cloudCard input {
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+}
+#cloudStatus {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-2);
+  font-size: 11px;
+  color: var(--text-soft);
+  margin-left: 6px;
+  border: 1px solid var(--line);
+  font-weight: 600;
+}
+#cloudStatus.ok  { background: var(--good); color: #fff; border-color: var(--good); }
+#cloudStatus.bad { background: var(--bad);  color: #fff; border-color: var(--bad);  }
+
+/* habit settings list */
+#customHabitsList .habit-mini {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--bg-2); padding: 8px 12px; border-radius: 10px;
+  border: 1px solid var(--line); margin-bottom: 6px;
+}
+#customHabitsList .habit-mini button {
+  background: none; border: none; cursor: pointer; color: var(--text-soft);
+}
+#customHabitsList .habit-mini button:hover { color: var(--bad); }
+
+/* modal */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(74, 59, 63, .35);
+  backdrop-filter: blur(3px);
+  display: grid; place-items: center; z-index: 100;
+  padding: 14px;
+}
+.modal {
+  background: var(--card); border-radius: var(--radius);
+  width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
+  box-shadow: var(--shadow); border: 1px solid var(--line);
+  animation: pop .25s ease;
+}
+@keyframes pop { from { transform: scale(.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-bottom: 1px dashed var(--line);
+}
+.modal-head h2 { margin: 0; font-family: 'Caveat', cursive; font-size: 26px; color: var(--primary); }
+.modal-body { padding: 14px 16px; }
+.modal-section { margin-bottom: 14px; }
+.modal-section textarea {
+  width: 100%; min-height: 70px; resize: vertical;
+  padding: 10px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--bg-2); font-family: inherit; color: var(--text);
+}
+.day-habits { display: flex; flex-direction: column; gap: 6px; }
+.day-habits .dh-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--bg-2); padding: 8px 10px; border-radius: 10px;
+  border: 1px solid var(--line);
+}
+.day-habits .dh-buttons { display: flex; gap: 4px; }
+.day-habits .dh-buttons button {
+  width: 30px; height: 30px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--card);
+  cursor: pointer; font-size: 14px; color: var(--text);
+}
+.day-habits .dh-buttons button.on-good { background: var(--good); color: #fff; }
+.day-habits .dh-buttons button.on-bad { background: var(--bad); color: #fff; }
+.quick-stats {
+  display: grid; gap: 6px;
+  grid-template-columns: 1fr 1fr;
+}
+.quick-stats label {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg-2); padding: 6px 8px; border-radius: 10px;
+  border: 1px solid var(--line); font-size: 13px;
+}
+.quick-stats input { width: 80px; }
+
+/* toast */
+.toast {
+  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+  background: var(--text); color: var(--card);
+  padding: 8px 16px; border-radius: 999px; font-size: 13px;
+  box-shadow: var(--shadow); z-index: 200;
+  animation: pop .2s ease;
+}
+.hidden { display: none !important; }
+.special-toggle {
+  display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 14px;
+}
+.special-toggle input { accent-color: var(--primary); width: 18px; height: 18px; }
+.journal-foot { font-size: 12px; color: var(--text-soft); margin-top: 6px; }
+
+/* ───── mobile + responsive tweaks ───── */
+
+/* Tablet: 760-1099px — calendar already collapses sidebar at 880, this adds polish */
+@media (max-width: 1099px) and (min-width: 761px) {
+  .health-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .insight-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+}
+
+/* Small phone & below: 640px */
+@media (max-width: 640px) {
+  body { font-size: 14px; padding-bottom: 60px; }
+  :root { --header-h: 60px; --search-h: 52px; }
+
+  .app-header { padding: 8px 12px; }
+  .brand-mascot { width: 38px; height: 38px; }
+  .brand-title { font-size: 20px; }
+  .brand-sub { display: none; }
+  .icon-btn { width: 34px; height: 34px; padding: 3px; }
+  .header-controls { gap: 4px; }
+
+  /* tab-bar gets a subtle right-edge fade to hint horizontal scroll */
+  .tab-bar {
+    padding: 8px 12px;
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 28px), transparent);
+            mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 28px), transparent);
+  }
+
+  .app-main { padding: 10px; }
+  .card { padding: 12px; border-radius: 14px; }
+  .card-label { font-size: 19px; margin-bottom: 6px; }
+
+  /* month picker */
+  .month-num { font-size: 42px; }
+  .month-meta { gap: 0; }
+  .month-year { font-size: 12px; }
+  .month-name { font-size: 13px; letter-spacing: 1.5px; }
+  .month-picker { gap: 10px; }
+
+  /* mood picker */
+  .mood-picker { gap: 6px 5px; row-gap: 20px; }
+  .mood-pick { width: 46px; height: 46px; font-size: 18px; border-radius: 11px; padding: 3px; }
+  .mood-pick .lbl { font-size: 9px; bottom: -15px; }
+  .custom-sticker-row { margin-top: 12px; }
+  .custom-sticker-row input { width: 52px; }
+
+  /* tab bar */
+  .tab-btn { min-width: 56px; padding: 6px 8px; }
+  .tab-btn .tab-ic { width: 22px; height: 22px; }
+  .tab-btn label { font-size: 10px; }
+
+  /* calendar grid — keep moods readable */
+  .calendar-grid { gap: 3px; }
+  .cell { padding: 2px 3px; aspect-ratio: 1; }
+  .cell .mood { font-size: 18px; }
+  .cell .day-num { font-size: 9px; }
+  .cell .indicator { width: 4px; height: 4px; }
+  .cell .has-note { font-size: 8px; }
+
+  /* deco corners — smaller and tucked closer */
+  .calendar-card .deco { width: 38px; height: 38px; }
+  .calendar-card .deco-tl { top: -14px; left: -10px; }
+  .calendar-card .deco-tr { top: -16px; right: -10px; }
+  .calendar-card .deco-bl { bottom: -14px; left: -10px; }
+  .calendar-card .deco-br { bottom: -16px; right: -10px; }
+
+  /* habits — limit dot size on full-width sidebar */
+  .habit-dots { gap: 4px; }
+  .habit-dot { max-width: 28px; max-height: 28px; margin: 0 auto; }
+  .habit-row { padding: 8px; }
+
+  /* health */
+  .health-grid { grid-template-columns: 1fr; gap: 12px; }
+  .meal { width: 60px; padding: 8px 4px; }
+  .meal .ic { font-size: 22px; }
+  .meal .nm { font-size: 10px; }
+  .stars-row { font-size: 28px; }
+  .counter-display { font-size: 26px; }
+  .big-num { font-size: 26px; }
+
+  /* todo */
+  .todo-grid { grid-template-columns: 1fr; }
+
+  /* stats */
+  .insight-grid { grid-template-columns: repeat(2, 1fr); }
+  .insight .ic { font-size: 20px; }
+  .insight .val { font-size: 14px; }
+  .chart-card canvas { max-height: 220px; }
+
+  /* mood of month */
+  .mood-of-month { width: 76px; height: 76px; }
+  .mood-of-month-text { font-size: 19px; }
+  .mom-mascot { width: 48px; height: 48px; bottom: -6px; right: -4px; }
+
+  /* journal */
+  .journal-card textarea { min-height: 200px; }
+
+  /* modal */
+  .quick-stats { grid-template-columns: 1fr; }
+  .modal { max-height: 96vh; }
+  .modal-head h2 { font-size: 22px; }
+
+  /* archive */
+  .archive-list { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+
+  /* streaks */
+  .streak-list { grid-template-columns: 1fr 1fr; }
+
+  /* week recap rows stack nicely */
+  .week-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+}
+
+/* Tiny phone: 380px and below */
+@media (max-width: 380px) {
+  .app-header { padding: 6px 10px; gap: 4px; }
+  .brand { gap: 6px; }
+  .brand-title { font-size: 18px; }
+  .brand-mascot { width: 32px; height: 32px; }
+  .icon-btn { width: 30px; height: 30px; padding: 2px; }
+  .header-controls { gap: 3px; }
+  .month-num { font-size: 36px; }
+  .mood-pick { width: 42px; height: 42px; font-size: 16px; border-radius: 10px; padding: 2px; }
+  .mood-pick .lbl { font-size: 8px; bottom: -14px; }
+  .insight-grid { grid-template-columns: 1fr 1fr; }
+  .streak-list { grid-template-columns: 1fr; }
+  .archive-list { grid-template-columns: 1fr 1fr; }
+  .meals-row { flex-wrap: wrap; }
+  .tab-btn { min-width: 52px; padding: 5px 6px; }
+}
+
+/* Ultra narrow: 340px and below — drop brand title to keep header tidy */
+@media (max-width: 340px) {
+  .brand-title { display: none; }
+}
+
+/* Desktop: roomy modals + wider charts */
+@media (min-width: 1100px) {
+  .calendar-layout { grid-template-columns: 320px 1fr; }
+  .modal { max-width: 560px; }
+  .chart-card canvas { max-height: 320px; }
+}
+
+/* Wide desktop: bigger sticker tiles for comfort */
+@media (min-width: 1400px) {
+  .app-main { padding: 20px; }
+  .calendar-layout { grid-template-columns: 360px 1fr; }
+}
+
+/* scrollbar polish */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--primary-soft); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }

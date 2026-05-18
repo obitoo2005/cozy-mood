@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="pink">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#ffd6e0" />
+  <meta name="description" content="A cute pastel monthly mood, habit and self-care tracker." />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Cozy Mood" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-180.png" />
+  <title>🌷 Cozy Mood Tracker</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Caveat:wght@500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
+  <script src="config.js" defer></script>
+  <script src="cloud.js" defer></script>
+</head>
+<body>
+  <!-- ╭─────────── TOP HEADER ───────────╮ -->
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mascot" aria-hidden="true"><img src="assets/mascot.png" alt="" onerror="this.replaceWith(document.createTextNode('🐰'));"></span>
+      <div>
+        <h1 class="brand-title">Cozy Mood</h1>
+        <p class="brand-sub">your cute self-care diary</p>
+      </div>
+    </div>
+
+    <div class="header-controls">
+      <button class="icon-btn" id="searchToggle" title="Search notes & moods" aria-label="Search"><img src="assets/header/search.png" alt="" onerror="this.replaceWith(document.createTextNode('🔎'));"></button>
+      <button class="icon-btn" id="themeToggle" title="Change theme" aria-label="Theme"><img src="assets/header/theme.png" alt="" onerror="this.replaceWith(document.createTextNode('🎨'));"></button>
+      <button class="icon-btn" id="darkToggle" title="Toggle dark mode" aria-label="Dark mode"><img src="assets/header/dark.png" alt="" onerror="this.replaceWith(document.createTextNode('🌙'));"></button>
+      <button class="icon-btn" id="notifyToggle" title="Reminders" aria-label="Reminders"><img src="assets/header/bell.png" alt="" onerror="this.replaceWith(document.createTextNode('🔔'));"></button>
+      <button class="icon-btn" id="menuToggle" title="Menu" aria-label="Menu"><img src="assets/header/menu.png" alt="" onerror="this.replaceWith(document.createTextNode('☰'));"></button>
+    </div>
+  </header>
+
+  <!-- ╭─────────── SEARCH BAR ───────────╮ -->
+  <div class="search-bar hidden" id="searchBar" role="search">
+    <input id="searchInput" type="search" placeholder="Search notes, journal, todos…" />
+    <div id="searchResults" class="search-results"></div>
+  </div>
+
+  <!-- ╭─────────── TAB NAV ───────────╮ -->
+  <nav class="tab-bar" role="tablist" aria-label="Sections">
+    <button class="tab-btn active" data-tab="calendar" role="tab"><span class="tab-ic"><img src="assets/tabs/calendar.png" alt="" onerror="this.replaceWith(document.createTextNode('📅'));"></span><label>Calendar</label></button>
+    <button class="tab-btn" data-tab="health" role="tab"><span class="tab-ic"><img src="assets/tabs/health.png" alt="" onerror="this.replaceWith(document.createTextNode('💪'));"></span><label>Health</label></button>
+    <button class="tab-btn" data-tab="todo" role="tab"><span class="tab-ic"><img src="assets/tabs/todo.png" alt="" onerror="this.replaceWith(document.createTextNode('📝'));"></span><label>To-Do</label></button>
+    <button class="tab-btn" data-tab="journal" role="tab"><span class="tab-ic"><img src="assets/tabs/journal.png" alt="" onerror="this.replaceWith(document.createTextNode('📖'));"></span><label>Journal</label></button>
+    <button class="tab-btn" data-tab="stats" role="tab"><span class="tab-ic"><img src="assets/tabs/stats.png" alt="" onerror="this.replaceWith(document.createTextNode('📊'));"></span><label>Stats</label></button>
+    <button class="tab-btn" data-tab="archive" role="tab"><span class="tab-ic"><img src="assets/tabs/archive.png" alt="" onerror="this.replaceWith(document.createTextNode('🗂️'));"></span><label>Archive</label></button>
+    <button class="tab-btn" data-tab="settings" role="tab"><span class="tab-ic"><img src="assets/tabs/settings.png" alt="" onerror="this.replaceWith(document.createTextNode('⚙️'));"></span><label>Settings</label></button>
+  </nav>
+
+  <main class="app-main">
+
+    <!-- ───────── CALENDAR TAB ───────── -->
+    <section class="tab-panel active" id="tab-calendar" role="tabpanel">
+      <!-- Month picker -->
+      <div class="month-picker">
+        <button class="round-btn" id="prevMonth" aria-label="Previous month">‹</button>
+        <div class="month-title">
+          <span class="month-num" id="monthNum">01</span>
+          <div class="month-meta">
+            <span class="month-year" id="monthYear">2026</span>
+            <span class="month-name" id="monthName">JANUARY</span>
+          </div>
+          <input type="month" id="monthJump" class="month-jump" aria-label="Jump to month" />
+        </div>
+        <button class="round-btn" id="nextMonth" aria-label="Next month">›</button>
+      </div>
+
+      <!-- Today's mood selector -->
+      <div class="today-mood card">
+        <div class="card-label">🌷 What is your mood today?</div>
+        <div class="mood-picker" id="moodPicker" role="radiogroup" aria-label="Choose today's mood"></div>
+        <div class="custom-sticker-row">
+          <input id="customStickerInput" maxlength="3" placeholder="✨" aria-label="Custom sticker" />
+          <button class="mini-btn" id="addCustomSticker">+ add custom</button>
+          <span class="hint">type any emoji to use as a sticker</span>
+        </div>
+      </div>
+
+      <div class="calendar-layout">
+        <!-- Sidebar : habits + month note -->
+        <aside class="side-panel">
+          <div class="card habit-card">
+            <div class="card-label">✿ Habit Tracker</div>
+            <div id="habitList" class="habit-list"></div>
+            <button class="mini-btn" id="addHabitBtn">+ add habit</button>
+          </div>
+
+          <div class="card note-card">
+            <div class="card-label">📌 Note for the month</div>
+            <textarea id="monthNote" placeholder="something special this month…"></textarea>
+          </div>
+
+          <div class="card mood-of-month-card">
+            <img class="mom-mascot" src="assets/mascot.png" alt="" aria-hidden="true" onerror="this.remove();">
+            <div class="card-label">🎀 Mood of the Month</div>
+            <div class="mood-of-month" id="moodOfMonth"></div>
+            <div class="mood-of-month-text" id="moodOfMonthText">log moods to see the vibe</div>
+          </div>
+        </aside>
+
+        <!-- Calendar grid -->
+        <div class="card calendar-card">
+          <img class="deco deco-tl" src="assets/deco/flower.png" alt="" aria-hidden="true" onerror="this.remove();">
+          <img class="deco deco-tr" src="assets/deco/star.png"   alt="" aria-hidden="true" onerror="this.remove();">
+          <img class="deco deco-br" src="assets/deco/cloud.png"  alt="" aria-hidden="true" onerror="this.remove();">
+          <img class="deco deco-bl" src="assets/deco/heart.png"  alt="" aria-hidden="true" onerror="this.remove();">
+          <div class="weekday-row">
+            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+          </div>
+          <div class="calendar-grid" id="calendarGrid"></div>
+
+          <div class="weekly-summary" id="weeklySummary"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────── HEALTH TAB ───────── -->
+    <section class="tab-panel" id="tab-health" role="tabpanel">
+      <div class="health-date-bar">
+        <button class="round-btn" id="hPrevDay">‹</button>
+        <input type="date" id="healthDate" />
+        <button class="round-btn" id="hNextDay">›</button>
+      </div>
+
+      <div class="health-grid">
+        <div class="card stat-card">
+          <div class="card-label">💧 Water Intake</div>
+          <div class="counter">
+            <button class="circle-btn" id="waterMinus">−</button>
+            <div class="counter-display"><span id="waterCount">0</span><small>/8 cups</small></div>
+            <button class="circle-btn" id="waterPlus">+</button>
+          </div>
+          <div class="cup-row" id="waterCups"></div>
+        </div>
+
+        <div class="card stat-card">
+          <div class="card-label">😴 Sleep Hours</div>
+          <input type="range" min="0" max="12" step="0.5" id="sleepRange" />
+          <div class="big-num"><span id="sleepHours">0</span><small>h</small></div>
+          <div class="progress-bar"><div id="sleepBar"></div></div>
+          <div class="hint" id="sleepHint">tap to set sleep hours</div>
+        </div>
+
+        <div class="card stat-card">
+          <div class="card-label">🚶 Step Tracker</div>
+          <input type="number" id="stepInput" placeholder="enter steps" min="0" />
+          <div class="big-num"><span id="stepDisplay">0</span><small>steps</small></div>
+          <div class="progress-bar"><div id="stepBar"></div></div>
+          <div class="hint">goal: 8000 steps</div>
+        </div>
+
+        <div class="card stat-card">
+          <div class="card-label">🔥 Calories Burned</div>
+          <input type="number" id="calInput" placeholder="enter calories" min="0" />
+          <div class="big-num"><span id="calDisplay">0</span><small>kcal</small></div>
+          <div class="progress-bar"><div id="calBar"></div></div>
+          <div class="hint">goal: 400 kcal</div>
+        </div>
+
+        <div class="card stat-card meals-card">
+          <div class="card-label">🍱 Meals Today</div>
+          <div class="meals-row" id="mealsRow"></div>
+          <div class="hint" id="mealsHint">did you eat properly?</div>
+        </div>
+
+        <div class="card stat-card prod-card">
+          <div class="card-label">⭐ Productivity</div>
+          <div class="stars-row" id="productivityStars"></div>
+          <div class="hint">how productive did you feel today?</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────── TODO TAB ───────── -->
+    <section class="tab-panel" id="tab-todo" role="tabpanel">
+      <div class="todo-date-bar">
+        <button class="round-btn" id="tPrevDay">‹</button>
+        <input type="date" id="todoDate" />
+        <button class="round-btn" id="tNextDay">›</button>
+      </div>
+
+      <div class="todo-grid">
+        <div class="card todo-card">
+          <div class="card-label">🌸 Today's Tasks</div>
+          <form id="todoForm" class="add-todo">
+            <input id="todoInput" placeholder="add a task…" />
+            <button class="mini-btn" type="submit">+ add</button>
+          </form>
+          <ul id="todoList" class="todo-list"></ul>
+          <div class="todo-foot"><span id="todoProgress">0 / 0</span> tasks done</div>
+        </div>
+
+        <div class="card future-card">
+          <div class="card-label">🎈 Future Notes & Reminders</div>
+          <form id="futureForm" class="add-todo">
+            <input id="futureInput" placeholder="something to remember…" />
+            <input type="date" id="futureDate" />
+            <button class="mini-btn" type="submit">+ add</button>
+          </form>
+          <ul id="futureList" class="todo-list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────── JOURNAL TAB ───────── -->
+    <section class="tab-panel" id="tab-journal" role="tabpanel">
+      <div class="todo-date-bar">
+        <button class="round-btn" id="jPrevDay">‹</button>
+        <input type="date" id="journalDate" />
+        <button class="round-btn" id="jNextDay">›</button>
+      </div>
+      <div class="card journal-card">
+        <div class="card-label">📖 Journal Entry <span class="hint" id="specialBadge"></span></div>
+        <label class="special-toggle"><input type="checkbox" id="specialDay" /> mark as a special day ✨</label>
+        <textarea id="journalText" placeholder="dear diary,&#10;today I felt…"></textarea>
+        <div class="journal-foot"><span id="journalCount">0</span> characters · saved automatically</div>
+      </div>
+    </section>
+
+    <!-- ───────── STATS TAB ───────── -->
+    <section class="tab-panel" id="tab-stats" role="tabpanel">
+      <div class="card insight-card">
+        <div class="card-label">✨ Monthly Summary</div>
+        <div class="insight-grid" id="insightGrid"></div>
+        <div class="ai-summary" id="aiSummary"></div>
+      </div>
+
+      <div class="card chart-card">
+        <div class="card-label">📈 Mood Graph</div>
+        <canvas id="moodChart"></canvas>
+      </div>
+
+      <div class="card chart-card">
+        <div class="card-label">📊 Habit Consistency</div>
+        <canvas id="habitChart"></canvas>
+      </div>
+
+      <div class="card chart-card">
+        <div class="card-label">💧 Health Tracking</div>
+        <canvas id="healthChart"></canvas>
+      </div>
+
+      <div class="card streak-card">
+        <div class="card-label">🔥 Streaks</div>
+        <div id="streakList" class="streak-list"></div>
+      </div>
+
+      <div class="card weeks-card">
+        <div class="card-label">🗓️ Weekly Recap</div>
+        <div id="weeksRecap"></div>
+      </div>
+    </section>
+
+    <!-- ───────── ARCHIVE TAB ───────── -->
+    <section class="tab-panel" id="tab-archive" role="tabpanel">
+      <div class="card">
+        <div class="card-label">🗂️ Mood History</div>
+        <div id="archiveList" class="archive-list"></div>
+      </div>
+    </section>
+
+    <!-- ───────── SETTINGS TAB ───────── -->
+    <section class="tab-panel" id="tab-settings" role="tabpanel">
+      <div class="card settings-card">
+        <div class="card-label">🎨 Theme</div>
+        <div class="theme-row" id="themeRow"></div>
+        <label class="setting-toggle">
+          <input type="checkbox" id="darkModeChk" /> Dark mode
+        </label>
+      </div>
+
+      <div class="card settings-card">
+        <div class="card-label">✿ Custom Habits</div>
+        <div id="customHabitsList"></div>
+        <form id="customHabitForm" class="add-todo">
+          <input id="newHabitName" placeholder="habit name (e.g. read 20 min)" />
+          <input id="newHabitIcon" placeholder="✨" maxlength="3" />
+          <button class="mini-btn" type="submit">+ add habit</button>
+        </form>
+      </div>
+
+      <div class="card settings-card">
+        <div class="card-label">✨ Custom Stickers</div>
+        <div id="customStickerList" class="custom-sticker-list"></div>
+        <p class="hint">stickers added from the calendar appear here</p>
+      </div>
+
+      <div class="card settings-card">
+        <div class="card-label">🔔 Reminders</div>
+        <label class="setting-toggle"><input type="checkbox" id="reminderEnabled" /> daily mood log reminder</label>
+        <label class="setting-toggle">
+          time:
+          <input type="time" id="reminderTime" value="21:00" />
+        </label>
+        <div class="row">
+          <button class="mini-btn" id="testReminder">🧪 send test reminder</button>
+        </div>
+        <p class="hint">browser notifications must be allowed. works while tab is open.</p>
+      </div>
+
+      <div class="card settings-card">
+        <div class="card-label">💾 Backup & Export</div>
+        <div class="row">
+          <button class="mini-btn" id="exportJson">⬇ export data (JSON)</button>
+          <button class="mini-btn" id="importJson">⬆ import data</button>
+          <button class="mini-btn" id="exportReport">📄 export monthly report</button>
+          <button class="mini-btn danger" id="clearData">🗑 reset all</button>
+        </div>
+        <input type="file" id="importFile" accept="application/json" hidden />
+        <p class="hint">data is saved locally in your browser. export regularly to back up.</p>
+      </div>
+
+      <div class="card settings-card" id="cloudCard">
+        <div class="card-label">☁️ Cloud Sync <span class="hint" id="cloudStatus">offline</span></div>
+        <p class="hint">sign in to sync your data across devices.</p>
+
+        <div id="cloudSignedOut">
+          <input type="email" id="cloudEmail" placeholder="email" autocomplete="email" />
+          <input type="password" id="cloudPassword" placeholder="password (min 6 chars)" autocomplete="current-password" />
+          <div class="row">
+            <button class="mini-btn" id="cloudSignIn">sign in</button>
+            <button class="mini-btn" id="cloudSignUp">create account</button>
+          </div>
+        </div>
+
+        <div id="cloudSignedIn" class="hidden">
+          <p class="hint">signed in as <b id="cloudUserEmail"></b></p>
+          <label class="setting-toggle">
+            <input type="checkbox" id="cloudAuto" /> auto-sync changes
+          </label>
+          <div class="row">
+            <button class="mini-btn" id="cloudPush">⬆ upload</button>
+            <button class="mini-btn" id="cloudPull">⬇ download</button>
+            <button class="mini-btn danger" id="cloudSignOut">sign out</button>
+          </div>
+          <p class="hint" id="cloudLastSync"></p>
+        </div>
+      </div>
+
+      <div class="card settings-card about-card">
+        <div class="card-label">💖 About</div>
+        <p>A cozy, pastel mood &amp; habit tracker. Track moods, habits, water, sleep, steps, calories, meals, todos and journals — all in one cute place.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- ╭─────────── DAY MODAL ───────────╮ -->
+  <div class="modal-backdrop hidden" id="dayModal" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="dayModalTitle">Date</h2>
+        <button class="icon-btn" id="dayModalClose" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-section">
+          <div class="card-label">mood</div>
+          <div class="mood-picker mood-picker-modal" id="dayMoodPicker"></div>
+        </div>
+        <div class="modal-section">
+          <div class="card-label">note</div>
+          <textarea id="dayNote" placeholder="how was your day?"></textarea>
+        </div>
+        <div class="modal-section">
+          <div class="card-label">habits</div>
+          <div class="day-habits" id="dayHabits"></div>
+        </div>
+        <div class="modal-section">
+          <div class="card-label">quick stats</div>
+          <div class="quick-stats">
+            <label>💧 <input type="number" min="0" id="qWater" /> cups</label>
+            <label>😴 <input type="number" min="0" max="24" step="0.5" id="qSleep" /> h</label>
+            <label>🚶 <input type="number" min="0" id="qSteps" /> steps</label>
+            <label>🔥 <input type="number" min="0" id="qCal" /> kcal</label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
