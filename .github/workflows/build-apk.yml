@@ -120,6 +120,7 @@ jobs:
             "launcherName": "Cozy Mood",
             "display": "standalone",
             "themeColor": "#ffd6e0",
+            "themeColorDark": "#1f1a23",
             "navigationColor": "#ffd6e0",
             "navigationColorDark": "#1f1a23",
             "navigationDividerColor": "#ffd6e0",
@@ -136,6 +137,7 @@ jobs:
               "path": "./android.keystore",
               "alias": "cozy"
             },
+            "splashScreenFadeOutDuration": 300,
             "generatorApp": "bubblewrap-cli",
             "webManifestUrl": "https://${PWA_HOST}${PWA_PATH}manifest.webmanifest",
             "fallbackType": "customtabs",
@@ -146,7 +148,10 @@ jobs:
             "isMetaQuest": false,
             "fullScopeUrl": "https://${PWA_HOST}${PWA_PATH}",
             "minSdkVersion": 21,
-            "orientation": "default"
+            "orientation": "default",
+            "iarcRatingId": "",
+            "additionalTrustedOrigins": [],
+            "retainedBundles": []
           }
           JSON
 
@@ -167,6 +172,9 @@ jobs:
           KEY_ALIAS="${{ secrets.ANDROID_KEY_ALIAS || 'cozy' }}"
 
           chmod +x ./gradlew
+
+          echo "--- gradle version ---"
+          ./gradlew --version || true
 
           # Build the release APK directly via Gradle, passing signing config
           # as injected properties so no interactive prompt is needed.
