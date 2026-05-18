@@ -29,6 +29,9 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Install Bubblewrap
         run: npm install -g @bubblewrap/cli
 
@@ -79,14 +82,25 @@ jobs:
         run: |
           mkdir twa && cd twa
 
+          # Resolve SDK / JDK paths
+          SDK_PATH="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          if [ -z "$SDK_PATH" ] || [ ! -d "$SDK_PATH" ]; then
+            echo "::error::Android SDK not found. ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT ANDROID_HOME=$ANDROID_HOME"
+            exit 1
+          fi
+          echo "Android SDK: $SDK_PATH"
+          echo "Java home:   $JAVA_HOME"
+          ls "$SDK_PATH" || true
+
           # Pre-create bubblewrap config so it doesn't ask about JDK/SDK install
           mkdir -p ~/.bubblewrap
           cat > ~/.bubblewrap/config.json <<JSON
           {
             "jdkPath": "$JAVA_HOME",
-            "androidSdkPath": "$ANDROID_HOME"
+            "androidSdkPath": "$SDK_PATH"
           }
           JSON
+          cat ~/.bubblewrap/config.json
 
           REPO_NAME="${GITHUB_REPOSITORY##*/}"
           OWNER_LOWER=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
