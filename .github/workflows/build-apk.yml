@@ -61,10 +61,26 @@ jobs:
       - name: Init Bubblewrap project
         run: |
           mkdir twa && cd twa
-          bubblewrap init \
+          # Pre-create the bubblewrap config so it doesn't ask about JDK/SDK install.
+          # JDK 17 is provided by the setup-java step, Android SDK comes with the GitHub runner.
+          mkdir -p ~/.bubblewrap
+          cat > ~/.bubblewrap/config.json <<JSON
+          {
+            "jdkPath": "$JAVA_HOME",
+            "androidSdkPath": "$ANDROID_HOME"
+          }
+          JSON
+          # Pipe "No" answers to any remaining interactive prompt
+          yes "No" | bubblewrap init \
             --manifest "${{ steps.pwa.outputs.url }}manifest.webmanifest" \
             --directory . \
-            --skipPwaValidation
+            --skipPwaValidation || true
+          # Sanity check
+          if [ ! -f twa-manifest.json ]; then
+            echo "::error::twa-manifest.json was not created"
+            ls -la
+            exit 1
+          fi
         env:
           BUBBLEWRAP_GA_TRACKING_ID: ''
 
@@ -75,14 +91,11 @@ jobs:
           KEYSTORE_PASS="${{ secrets.ANDROID_KEYSTORE_PASSWORD || 'cozypass' }}"
           KEY_PASS="${{ secrets.ANDROID_KEY_PASSWORD || 'cozypass' }}"
           KEY_ALIAS="${{ secrets.ANDROID_KEY_ALIAS || 'cozy' }}"
-          bubblewrap build \
+          # Feed passwords to bubblewrap on stdin (it prompts twice: keystore pass, then key pass)
+          printf '%s\n%s\n' "$KEYSTORE_PASS" "$KEY_PASS" | bubblewrap build \
             --skipPwaValidation \
             --signingKeyPath=./android.keystore \
             --signingKeyAlias="$KEY_ALIAS"
-        env:
-          # bubblewrap reads these from env when present
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || 'cozypass' }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD || 'cozypass' }}
 
       - name: Find built APK
         id: apk
